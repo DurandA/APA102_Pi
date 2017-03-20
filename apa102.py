@@ -54,13 +54,13 @@ to make it down the line to the last LED.
 rgb_map = { 'rgb': [3,2,1], 'rbg': [3,1,2], 'grb': [2,3,1], 'gbr': [2,1,3], 'brg': [1,3,2], 'bgr': [1,2,3] }
 
 class APA102:
-    def __init__(self, numLEDs, globalBrightness=31, order='rgb', bus=0, device=1, max_speed_hz=8000000): # The number of LEDs in the Strip
-        self.numLEDs = numLEDs
+    def __init__(self, num_leds, global_brightness=31, order='rgb', bus=0, device=1, max_speed_hz=8000000): # The number of LEDs in the Strip
+        self.num_leds = num_leds
         order = order.lower()
         self.rgb = rgb_map.get(order, rgb_map['rgb'])
         # LED startframe is three "1" bits, followed by 5 brightness bits
-        self.ledstart = (globalBrightness & 0b00011111) | 0b11100000 # Don't validate, just slash of extra bits
-        self.leds = [self.ledstart,0,0,0] * self.numLEDs # Pixel buffer
+        self.ledstart = (global_brightness & 0b00011111) | 0b11100000 # Don't validate, just slash of extra bits
+        self.leds = [self.ledstart,0,0,0] * self.num_leds # Pixel buffer
         self.spi = spidev.SpiDev()  # Init the SPI device
         self.spi.open(bus, device)  # Open SPI port 0, slave device (CS)  1
         if max_speed_hz:
@@ -94,7 +94,7 @@ class APA102:
     been sent as part of "clockEndFrame".
     """
     def clockEndFrame(self):
-        for _ in range((self.numLEDs + 15) // 16):  # Round up numLEDs/2 bits (or numLEDs/16 bytes)
+        for _ in range((self.num_leds + 15) // 16):  # Round up numLEDs/2 bits (or numLEDs/16 bytes)
             self.spi.xfer2([0x00])
 
     """
@@ -103,7 +103,7 @@ class APA102:
     """
     def clearStrip(self):
         # Clear the buffer
-        for led in range(self.numLEDs):
+        for led in range(self.num_leds):
             self.setPixel(led, 0, 0, 0)
         self.show()
 
@@ -112,24 +112,24 @@ class APA102:
     Sets the color of one pixel in the LED stripe. The changed pixel is not shown yet on the Stripe, it is only
     written to the pixel buffer. Colors are passed individually.
     """
-    def setPixel(self, ledNum, red, green, blue):
-        if ledNum < 0:
+    def setPixel(self, led_num, red, green, blue):
+        if led_num < 0:
             return # Pixel is invisible, so ignore
-        if ledNum >= self.numLEDs:
+        if led_num >= self.num_leds:
             return # again, invsible
-        startIndex = 4 * ledNum
-        self.leds[startIndex] = self.ledstart
-        self.leds[startIndex+self.rgb[0]] = red
-        self.leds[startIndex+self.rgb[1]] = green
-        self.leds[startIndex+self.rgb[2]] = blue
+        start_idx = 4 * led_num
+        self.leds[start_idx] = self.ledstart
+        self.leds[start_idx+self.rgb[0]] = red
+        self.leds[start_idx+self.rgb[1]] = green
+        self.leds[start_idx+self.rgb[2]] = blue
 
     """
     void setPixelRGB(ledNum,rgbColor)
     Sets the color of one pixel in the LED stripe. The changed pixel is not shown yet on the Stripe, it is only
     written to the pixel buffer. Colors are passed combined (3 bytes concatenated)
     """
-    def setPixelRGB(self, ledNum, rgbColor):
-        self.setPixel(ledNum, (rgbColor & 0xFF0000) >> 16, (rgbColor & 0x00FF00) >> 8, rgbColor & 0x0000FF)
+    def setPixelRGB(self, led_num, rgb_color):
+        self.setPixel(led_num, (rgb_color & 0xFF0000) >> 16, (rgb_color & 0x00FF00) >> 8, rgb_color & 0x0000FF)
 
     """
     void rotate(positions)
@@ -137,7 +137,7 @@ class APA102:
     The number could be negative, which means rotating in the opposite direction.
     """
     def rotate(self, positions=1):
-        cutoff = 4*(positions % self.numLEDs)
+        cutoff = 4*(positions % self.num_leds)
         self.leds = self.leds[cutoff:] + self.leds[:cutoff]
 
     """
@@ -170,16 +170,16 @@ class APA102:
     Get a color from a color wheel
     Green -> Red -> Blue -> Green
     """
-    def wheel(self, wheelPos):
-        if wheelPos > 255: wheelPos = 255 # Safeguard
-        if wheelPos < 85: # Green -> Red
-            return self.combineColor(wheelPos * 3, 255 - wheelPos * 3, 0)
-        elif wheelPos < 170: # Red -> Blue
-            wheelPos -= 85
-            return self.combineColor(255 - wheelPos * 3, 0, wheelPos * 3)
+    def wheel(self, wheel_pos):
+        if wheel_pos > 255: wheel_pos = 255 # Safeguard
+        if wheel_pos < 85: # Green -> Red
+            return self.combineColor(wheel_pos * 3, 255 - wheel_pos * 3, 0)
+        elif wheel_pos < 170: # Red -> Blue
+            wheel_pos -= 85
+            return self.combineColor(255 - wheel_pos * 3, 0, wheel_pos * 3)
         else: # Blue -> Green
             wheelPos -= 170
-            return self.combineColor(0, wheelPos * 3, 255 - wheelPos * 3);
+            return self.combineColor(0, wheel_pos * 3, 255 - wheel_pos * 3);
 
     """
     void dumparray()
